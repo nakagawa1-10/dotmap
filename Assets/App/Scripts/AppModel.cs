@@ -7,15 +7,14 @@ namespace Docomo.Map5g
 {
     public class AppModel
     {
-        //　クリックされたDot
-        private ReactiveProperty<GameObject> _clickedDot;
-        public IReadOnlyReactiveProperty<GameObject> ClickedDot { get { return _clickedDot; } }
-        public void SetClickedDot(GameObject clickedDot) { _clickedDot.Value = clickedDot; }
+        private ReactiveProperty<string> _clickedDotId;
+        public IReadOnlyReactiveProperty<string> ClickedDot { get { return _clickedDotId; } }
+        public void SetClickedDotId(string clickedDotId) { _clickedDotId.Value = clickedDotId; }
 
 
         public AppModel()
         {
-            _clickedDot = new ReactiveProperty<GameObject>(new GameObject());
+            _clickedDotId = new ReactiveProperty<string>(string.Empty);
         }
     }
 }

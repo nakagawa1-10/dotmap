@@ -7,6 +7,14 @@ namespace Docomo.Map5g
 {
     public class DotView : MonoBehaviour
     {
+        // ドット全体の中での座標が入る : x_y
+        private string _id = "";
+
+        public string Id
+        {
+            get { return _id; }
+        }
+
         private Vector3 _originPos;
 
         private bool _isWaving = false;
@@ -22,6 +30,8 @@ namespace Docomo.Map5g
         private float _waveDecay = 1.0f;
 
         private System.IDisposable _rippleStream;
+
+
 
 
         private void OnEnable()
@@ -78,6 +88,11 @@ namespace Docomo.Map5g
             transform.position = new Vector3(_originPos.x, Mathf.Lerp(transform.position.y, targetYPos, 0.3f), _originPos.z);
 
             _wavingTime += Time.deltaTime;
+        }
+
+        public void SetId(int x, int y)
+        {
+            _id = x + "_" + y;
         }
     }
 }

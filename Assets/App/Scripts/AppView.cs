@@ -17,11 +17,23 @@ namespace Docomo.Map5g
         private Transform _dotParent;
 
         private DotView[,] _dotArr = null;
-        //private GameObject[,] _dotArr = null;
 
-        private RaycastHit hit; // 画面クリック検知用
+        private RaycastHit _hit; // 画面クリック検知用
 
-        private System.IDisposable _mouseEventStream;
+        private System.IDisposable _mouseEventStream = null;
+
+        private System.IDisposable _idleWaveStream = null;
+
+        [SerializeField]
+        private Texture2D _maskTexture;
+
+        [SerializeField]
+        private Color _maskThresholdColor;
+
+        private Material _dotSharedMaterial = null;
+
+        [SerializeField]
+        private IdleWaveKernel _idleWaveKernel;
 
 
         #region MonoBehavior functions
@@ -35,15 +47,14 @@ namespace Docomo.Map5g
             _mouseEventStream = UniRxUtility.ObserveGetMouseButtonDown(0, () =>
             {
                 Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-                if (Physics.Raycast(ray, out hit))
+                if (Physics.Raycast(ray, out _hit))
                 {
-                    if (hit.collider.gameObject.tag == "Dot")
+                    if (_hit.collider.gameObject.tag == "Dot")
                     {
-                        OnClickDot.SafeInvoke(hit.collider.gameObject);
+                        OnClickDot.SafeInvoke(_hit.collider.gameObject);
                     }
                 }
             }, gameObject);
-            //_mouseEventStream = Observable.EveryUpdate
         }
 
         private void OnDisable()
@@ -75,8 +86,12 @@ namespace Docomo.Map5g
                     dot.GetComponent<Renderer>().SetPropertyBlock(propertyBlock);
 
                     _dotArr[w, h] = dot.GetComponent<DotView>();
+                    _dotArr[w, h].SetId(w, h);
                 }
             }
+
+            // マスク処理
+            MaskMap();
         }
 
         // TODO:C : デバック用にマップの削除処理 + 削除完了を伝えるイベント実装
@@ -91,8 +106,9 @@ namespace Docomo.Map5g
         }
 
         // TODO:C : GPUで実装
-        // TODO:W : IEnumratorで1フレーム当たりの付加を下げる。
-        public void MaskMap(Texture2D maskTex, Color thresholdColor)
+        // TODO:W : IEnumratorで1フレーム当たりの付加を下げるのもあり
+        //public void MaskMap(Texture2D maskTex, Color thresholdColor)
+        private void MaskMap()
         {
             if (!HasInitMap())
             {
@@ -109,12 +125,12 @@ namespace Docomo.Map5g
                     // ドットの位置に対応するテクスチャのピクセル情報を取得
                     float u = w / (float)wDotNum;
                     float v = h / (float)hDotNum;
-                    var maskColor = maskTex.GetPixel(
-                        Mathf.FloorToInt(maskTex.width * u), 
-                        Mathf.FloorToInt(maskTex.height * v));
+                    var maskColor = _maskTexture.GetPixel(
+                        Mathf.FloorToInt(_maskTexture.width * u), 
+                        Mathf.FloorToInt(_maskTexture.height * v));
 
                     // マスク処理
-                    if (!maskColor.IsDarkerThan(thresholdColor))
+                    if (!maskColor.IsDarkerThan(_maskThresholdColor))
                         _dotArr[w, h].gameObject.SetActive(true);
                 }
             }
@@ -144,24 +160,13 @@ namespace Docomo.Map5g
 
         // TODO:C : コンピュートシェーダーで実装
         #region 待機中波アニメーション
-        private System.IDisposable _idleWaveStream = null;
-
-        [SerializeField]
-        private Shader _kernelShader;
-        private Material _kernelMaterial;
-        private RenderTexture _idleWaveScaleBuffer1 = null;
-        private RenderTexture _idleWaveScaleBuffer2 = null;
-
-        private Material _dotSharedMaterial = null;
-
-        private bool needsReset = true;
-
         public void StartIdleWave()
         {
             if (IsIdleWaving()) return;
             _idleWaveStream = Observable.EveryUpdate().Subscribe(_ =>
             {
-                UpdateBuffer();
+                _idleWaveKernel.UpdateBuffer();
+                _dotSharedMaterial.SetTexture("_ScaleBuffer", _idleWaveKernel.Buffer);
             });
         }
 
@@ -172,81 +177,18 @@ namespace Docomo.Map5g
             _idleWaveStream.Dispose();
             _idleWaveStream = null;
 
-            _kernelMaterial.SetTexture("_PositionBuffer", _idleWaveScaleBuffer2);
-            Graphics.Blit(null, _idleWaveScaleBuffer2, _kernelMaterial, 2);
-            _dotSharedMaterial.SetTexture("_ScaleBuffer", _idleWaveScaleBuffer2);
+            _idleWaveKernel.ResetBuffer();
+            _dotSharedMaterial.SetTexture("_ScaleBuffer", _idleWaveKernel.Buffer);
         }
 
         public bool IsIdleWaving()
         {
             return _idleWaveStream != null;
         }
-
-        private void UpdateBuffer()
-        {
-            if (needsReset) ResetResources();
-
-            SwapBuffersAndInvokeKernels();
-
-            // Set Buffer Texture
-            _dotSharedMaterial.SetTexture("_ScaleBuffer", _idleWaveScaleBuffer2);
-        }
-
-        private RenderTexture CreateBuffer()
-        {
-            var width = 320;
-            var height = 320;
-            var buffer = new RenderTexture(width, height, 0, RenderTextureFormat.ARGBFloat);
-            buffer.hideFlags = HideFlags.DontSave;
-            buffer.filterMode = FilterMode.Point;
-            buffer.wrapMode = TextureWrapMode.Repeat;
-            return buffer;
-        }
-
-        private Material CreateMaterial(Shader shader)
-        {
-            var material = new Material(shader);
-            material.hideFlags = HideFlags.DontSave;
-            return material;
-        }
-
-        private void InitializeBuffers()
-        {
-            Graphics.Blit(null, _idleWaveScaleBuffer2, _kernelMaterial, 0);
-        }
-
-        private void SwapBuffersAndInvokeKernels()
-        {
-            var tempPosition = _idleWaveScaleBuffer1;
-            _idleWaveScaleBuffer1 = _idleWaveScaleBuffer2;
-            _idleWaveScaleBuffer2 = tempPosition;
-
-            _kernelMaterial.SetTexture("_PositionBuffer", _idleWaveScaleBuffer2);
-            Graphics.Blit(null, _idleWaveScaleBuffer2, _kernelMaterial, 1);
-        }
-
-        private void ResetResources()
-        {
-            ClearResources();
-
-            _idleWaveScaleBuffer1 = CreateBuffer();
-            _idleWaveScaleBuffer2 = CreateBuffer();
-            if (!_kernelMaterial) _kernelMaterial = CreateMaterial(_kernelShader);
-
-            InitializeBuffers();
-
-            needsReset = false;
-        }
-
-        private void ClearResources()
-        {
-            if (_idleWaveScaleBuffer1) DestroyImmediate(_idleWaveScaleBuffer1);
-            if (_idleWaveScaleBuffer2) DestroyImmediate(_idleWaveScaleBuffer2);
-            if (_kernelMaterial) DestroyImmediate(_kernelMaterial);
-        }
         #endregion
 
         // Utility
+        // ここをもっとシンプルな形に変更 : 試行回数減らす
         // 二次元配列の特定の要素から指定した範囲内の要素をまとめたListを返す
         /*
          * 1. 要素数が[4, 4]で範囲が1以内の場合
@@ -259,6 +201,8 @@ namespace Docomo.Map5g
          * "-" : 指定した要素
          * "x" : 範囲内の要素
          * "+" : 範囲外の要素
+         * 
+         * Note : 試行回数 (range + 1)2乗
          */
         private List<T> GetElementsInRange<T>(Vector2 offset, T[,] arr2D, int range)
         {

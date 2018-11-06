@@ -17,14 +17,6 @@ namespace Docomo.Map5g
 
         private MapSetting _mapSetting;
 
-        // TODO:C : 保管場所としてもっと良い場所ありそうなんで検討
-        [SerializeField]
-        private Texture2D _maskTexture;
-
-        // TODO:C : 保管場所としてもっと良い場所ありそうなんで検討
-        [SerializeField]
-        private Color _maskThresholdColor;
-
 
         #region MonoBehaviour functions
         private void Awake()
@@ -50,7 +42,6 @@ namespace Docomo.Map5g
         private void Start()
         {
             _view.InitMap(_mapSetting.Width, _mapSetting.Height, _mapSetting.WidthGapSize, _mapSetting.HeightGapSize);
-            _view.MaskMap(_maskTexture, _maskThresholdColor);
             _view.StartIdleWave();
         }
 
@@ -63,7 +54,7 @@ namespace Docomo.Map5g
         private void Bind()
         {
             _view.OnClickDot = OnClickDot;
-            _streams.Add(_model.ClickedDot.Subscribe(OnChangeClickedDot));
+            _streams.Add(_model.ClickedDot.Subscribe(OnChangeClickedDotId));
             // Idle Waviing Toggle for debug
             _streams.Add(UniRxUtility.ObserveInputKeyDown(KeyCode.I, () =>
             {
@@ -84,18 +75,28 @@ namespace Docomo.Map5g
             _streams.Clear();
         }
 
-        private void OnChangeClickedDot(GameObject dot)
+        private void OnChangeClickedDotId(string dotId)
         {
+            if (dotId.IsNullOrEmpty())
+            {
+                return;
+            }
+
+            var dotOffsetStr = dotId.Split('_');
+            var dotOffset = new Vector2(int.Parse(dotOffsetStr[0]), int.Parse(dotOffsetStr[1]));
             if (_view.HasInitMap())
             {
-                var offset = new Vector2(dot.transform.position.x, dot.transform.position.z);
+                var offset = new Vector2(dotOffset.x, dotOffset.y);
                 _view.Ripple(offset, 10);
             }
+
+            dotId = string.Empty;
         }
 
         private void OnClickDot(GameObject dot)
         {
-            _model.SetClickedDot(dot);
+            string dotId = dot.GetComponent<DotView>().Id;
+            _model.SetClickedDotId(dotId);
         }
     }
 }

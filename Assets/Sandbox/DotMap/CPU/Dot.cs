@@ -7,7 +7,6 @@ namespace Sandbox.DotMap
 {
     public class Dot : MonoBehaviour
     {
-        [SerializeField]
         private Vector2 _offset = new Vector2(0.0f, 0.0f);
         public Vector2 Offset
         {

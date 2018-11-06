@@ -344,6 +344,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1291087339}
   - component: {fileID: 1291087340}
+  - component: {fileID: 1291087341}
   m_Layer: 0
   m_Name: ViewRoot
   m_TagString: Untagged
@@ -380,6 +381,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _dotPrefab: {fileID: 843030323}
   _dotParent: {fileID: 248260028}
+  _maskTexture: {fileID: 2800000, guid: d5ec1a9595123b449a9d03991aa62acb, type: 3}
+  _maskThresholdColor: {r: 0.2264151, g: 0.2264151, b: 0.2264151, a: 0}
+  _idleWaveKernel: {fileID: 1291087341}
+--- !u!114 &1291087341
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 1291087338}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8a8790c099595b9478f3a3073aa167ce, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
   _kernelShader: {fileID: 4800000, guid: 686ed0a3a47c84f0dbbd29c083e5c5fc, type: 3}
 --- !u!1 &1449101295
 GameObject:
@@ -423,8 +438,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _view: {fileID: 1291087340}
-  _maskTexture: {fileID: 2800000, guid: d5ec1a9595123b449a9d03991aa62acb, type: 3}
-  _maskThresholdColor: {r: 0.20754719, g: 0.20754719, b: 0.20754719, a: 0}
 --- !u!1001 &2100058277
 Prefab:
   m_ObjectHideFlags: 0
