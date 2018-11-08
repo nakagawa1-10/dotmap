@@ -87,7 +87,8 @@ namespace Docomo.Map5g
             if (_view.HasInitMap())
             {
                 var offset = new Vector2(dotOffset.x, dotOffset.y);
-                _view.Ripple(offset, 10);
+                // TODO:M : ここの変数外部化
+                _view.Ripple(offset, 13);
             }
 
             dotId = string.Empty;

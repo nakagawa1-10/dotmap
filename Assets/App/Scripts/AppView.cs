@@ -139,7 +139,8 @@ namespace Docomo.Map5g
         #region 波紋アニメーション
         public void Ripple(Vector2 startOffset, int rippleRange)
         {
-            var rippleDots = GetElementsInRange<DotView>(startOffset, _dotArr, rippleRange);
+            //var rippleDots = GetElementsInRange(startOffset, _dotArr, rippleRange);
+            var rippleDots = GetDotsInRange(startOffset, rippleRange, (int)startOffset.x, (int)startOffset.y, rippleRange);
 
             float maxDistance = 0.0f;
             foreach (var dot in rippleDots)
@@ -187,8 +188,8 @@ namespace Docomo.Map5g
         }
         #endregion
 
-        // Utility
-        // ここをもっとシンプルな形に変更 : 試行回数減らす
+
+        #region Utility
         // 二次元配列の特定の要素から指定した範囲内の要素をまとめたListを返す
         /*
          * 1. 要素数が[4, 4]で範囲が1以内の場合
@@ -201,12 +202,117 @@ namespace Docomo.Map5g
          * "-" : 指定した要素
          * "x" : 範囲内の要素
          * "+" : 範囲外の要素
-         * 
-         * Note : 試行回数 (range + 1)2乗
          */
-        private List<T> GetElementsInRange<T>(Vector2 offset, T[,] arr2D, int range)
+        // TODO:M : 試行回数減らす
+        // TODO:S : メソッドもっと短くまとめたい
+        // TODO:C : offsetを扱う部分でVector2とかint二つ作ったりバラバラなので統一したい
+        private List<DotView> GetDotsInRange(Vector2 offset, int range, int originOffsetX = 0, int originOffsetY = 0, int originRange = 0)
         {
-            var list = new List<T>();
+            var list = new List<DotView>();
+
+            if (range <= 1)
+            {
+                // TODO:M : それぞれのピクセルが範囲内か判定
+                var xLength = _dotArr.GetLength(0);
+                var yLength = _dotArr.GetLength(1);
+
+                // center
+                if (IsInRange(new Vector2(offset.x, offset.y) , new Vector2(originOffsetX, originOffsetY), originRange))
+                    list.Add(_dotArr[(int)offset.x, (int)offset.y]);
+                // left
+                if (IsInRange(new Vector2(offset.x - 1, offset.y), new Vector2(originOffsetX, originOffsetY), originRange))
+                    list.Add(_dotArr[(int)offset.x - 1, (int)offset.y]);
+                // right
+                if (IsInRange(new Vector2(offset.x + 1, offset.y), new Vector2(originOffsetX, originOffsetY), originRange))
+                    list.Add(_dotArr[(int)offset.x + 1, (int)offset.y]);
+                // top
+                if (IsInRange(new Vector2(offset.x, offset.y + 1), new Vector2(originOffsetX, originOffsetY), originRange))
+                    list.Add(_dotArr[(int)offset.x, (int)offset.y + 1]);
+                // bottom
+                if (IsInRange(new Vector2(offset.x, offset.y - 1), new Vector2(originOffsetX, originOffsetY), originRange))
+                    list.Add(_dotArr[(int)offset.x, (int)offset.y - 1]);
+                // left top
+                if (IsInRange(new Vector2(offset.x - 1, offset.y + 1), new Vector2(originOffsetX, originOffsetY), originRange))
+                    list.Add(_dotArr[(int)offset.x - 1, (int)offset.y + 1]);
+                // left bottom
+                if (IsInRange(new Vector2(offset.x - 1, offset.y - 1), new Vector2(originOffsetX, originOffsetY), originRange))
+                    list.Add(_dotArr[(int)offset.x - 1, (int)offset.y - 1]);
+                // right top
+                if (IsInRange(new Vector2(offset.x + 1, offset.y + 1), new Vector2(originOffsetX, originOffsetY), originRange))
+                    list.Add(_dotArr[(int)offset.x + 1, (int)offset.y + 1]);
+                // right bottom
+                if (IsInRange(new Vector2(offset.x + 1, offset.y - 1), new Vector2(originOffsetX, originOffsetY), originRange))
+                    list.Add(_dotArr[(int)offset.x + 1, (int)offset.y - 1]);
+            }
+            else
+            {
+                // 9分割できる正方形で範囲を9分割する
+                // 周囲1pxの正方形になるまでそれぞれの正方形に対して9分割を続けていく
+                // 範囲外のピクセルを省く処理
+
+                // 次に周囲何pxで探索するか決定
+                // TODO:S : ここもっと行数すくなくかけそう
+                int i = 0;
+                int nextSearchRange = 0;
+                int biggerRange = 0;
+                while (true)
+                {
+                    var pow = (int)Mathf.Pow(3, i);
+                    nextSearchRange = biggerRange;
+                    biggerRange += pow;
+
+                    if (range > nextSearchRange && range <= biggerRange)
+                    {
+                        break;
+                    }
+                    i++;
+                }
+
+                // 次の評価点を決定
+                int nextEvaluationBase = nextSearchRange + nextSearchRange + 1;
+
+                // center
+                list.AddRange(GetDotsInRange(new Vector2(offset.x, offset.y), nextSearchRange, originOffsetX, originOffsetY, originRange));
+                // left
+                list.AddRange(GetDotsInRange(new Vector2(offset.x - nextEvaluationBase, offset.y), nextSearchRange, originOffsetX, originOffsetY, originRange));
+                // right
+                list.AddRange(GetDotsInRange(new Vector2(offset.x + nextEvaluationBase, offset.y), nextSearchRange, originOffsetX, originOffsetY, originRange));
+                // top
+                list.AddRange(GetDotsInRange(new Vector2(offset.x, offset.y + nextEvaluationBase), nextSearchRange, originOffsetX, originOffsetY, originRange));
+                // bottom
+                list.AddRange(GetDotsInRange(new Vector2(offset.x, offset.y - nextEvaluationBase), nextSearchRange, originOffsetX, originOffsetY, originRange));
+                // left top
+                list.AddRange(GetDotsInRange(new Vector2(offset.x - nextEvaluationBase, offset.y + nextEvaluationBase), nextSearchRange, originOffsetX, originOffsetY, originRange));
+                // left bottom
+                list.AddRange(GetDotsInRange(new Vector2(offset.x - nextEvaluationBase, offset.y - nextEvaluationBase), nextSearchRange, originOffsetX, originOffsetY, originRange));
+                // right top
+                list.AddRange(GetDotsInRange(new Vector2(offset.x + nextEvaluationBase, offset.y + nextEvaluationBase), nextSearchRange, originOffsetX, originOffsetY, originRange));
+                // right bottom
+                list.AddRange(GetDotsInRange(new Vector2(offset.x + nextEvaluationBase, offset.y - nextEvaluationBase), nextSearchRange, originOffsetX, originOffsetY, originRange));
+            }
+
+            return list;
+        }
+
+        private bool IsInRange(Vector2 targetOffset, Vector2 originOffset, int range)
+        {
+            var xLength = _dotArr.GetLength(0);
+            var yLength = _dotArr.GetLength(1);
+
+            // ピクセル内か判定
+            if (targetOffset.x < 0 || targetOffset.y < 0 || targetOffset.x >= xLength || targetOffset.y >= yLength)
+                return false;
+
+            // 範囲内か判定
+            if ((targetOffset.x < originOffset.x - range || targetOffset.y < originOffset.y - range || targetOffset.x > originOffset.x + range || targetOffset.y > originOffset.y + range))
+                return false;
+
+            return true;
+        }
+
+        private List<DotView> GetElementsInRange(Vector2 offset, DotView[,] arr2D, int range)
+        {
+            var list = new List<DotView>();
             var xLength = arr2D.GetLength(0);
             var yLength = arr2D.GetLength(1);
 
@@ -258,5 +364,6 @@ namespace Docomo.Map5g
 
             return list;
         }
+        #endregion // Utility
     }
 }
