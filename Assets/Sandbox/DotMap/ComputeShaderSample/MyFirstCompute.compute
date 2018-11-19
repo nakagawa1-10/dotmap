@@ -1,0 +1,58 @@
+﻿// NOTE : Compute ShaderではThread GroupとThread numberの調整がとても大事ですね
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+#pragma kernel KernelFunctinoA
+#pragma kernel KernelFunctinoB
+
+//RWTexture2D<float4> Result;
+RWStructuredBuffer<int> Result;
+
+[numthreads(2, 2, 1)]
+void CSMain(uint3 id : SV_DispatchThreadID,
+	uint3 groupID : SV_GroupID,
+	uint3 groupThreadID : SV_GroupThreadID)
+{
+	int index = id.x + id.y;
+	Result[index] = id.x + id.y;
+}
+
+RWTexture2D<float4> TextureBuffer;
+
+[numthreads(8, 8, 1)]
+void KernelFunctinoA(uint3 id : SV_DispatchThreadID,
+	uint3 groupID : SV_GroupID,
+	uint3 groupThreadID : SV_GroupThreadID)
+{
+	float width, height;
+	TextureBuffer.GetDimensions(width, height);
+
+	TextureBuffer[id.xy] = float4(
+		id.x / width,
+		id.x / width, 
+		id.x / width, 
+		1);
+}
+
+RWTexture2D<float4> TextureBufferB;
+
+[numthreads(8, 8, 1)]
+void KernelFunctinoB(uint3 id : SV_DispatchThreadID,
+	uint3 groupID : SV_GroupID,
+	uint3 groupThreadID : SV_GroupThreadID)
+{
+	float width, height;
+	TextureBufferB.GetDimensions(width, height);
+
+	// 縦に白から黒へのグラデーション
+	/*TextureBufferB[id.xy] = float4(
+		id.y / height,
+		id.y / height,
+		id.y / height,
+		1);*/
+
+	TextureBufferB[id.xy] = float4(
+		(id.x + id.y) / (width + height),
+		(id.x + id.y) / (width + height),
+		(id.x + id.y) / (width + height),
+		1);
+}

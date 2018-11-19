@@ -1,0 +1,84 @@
+﻿#pragma kernel Init
+#pragma kernel Update
+
+#define ThreadBlockSize 256
+
+struct DotData
+{
+	bool Enable;
+	float3 OriginPos;
+	float3 Position;
+	float3 Albedo;
+};
+
+RWStructuredBuffer<DotData> _DotDataBuffer;
+int _Width;
+int _Height;
+
+Texture2D<float4> _MaskTexture;
+int _MaskWidth;
+int _MaskHeight;
+float4 _MaskColor;
+
+// Dot群全体の基準座標
+float3 _BasePos;
+
+[numthreads(ThreadBlockSize, 1, 1)]
+void Init (uint3 id : SV_DispatchThreadID)
+{
+	// インデックス取得
+	// TODO:C : const unsignedを使用するメリットは?
+	const unsigned int index = id.x;
+
+	int x = index % _Width;
+	int z = index / _Height;
+
+	// Position計算
+	_DotDataBuffer[index].OriginPos = float3(x - _Width / 2, 0, z - _Height / 2);
+	float3 originPos = _DotDataBuffer[index].OriginPos;
+	_DotDataBuffer[index].Position = float3(originPos.x + _BasePos.x, originPos.y + _BasePos.y, originPos.z + _BasePos.z);
+	_DotDataBuffer[index].Albedo = float3(1, 1, 1);
+
+	// Mask処理
+	// TODO:C : アンチエイリアシング的に曲線部分をなめらかにしたい
+	float maskX = (float)_MaskWidth * ((float)x / (float)_Width);
+	float maskY = (float)_MaskHeight * ((float)z / (float)_Height);
+	float4 maskTexColor = _MaskTexture[uint2(maskX, maskY)];
+	if (maskTexColor.r > _MaskColor.r ||
+		maskTexColor.g > _MaskColor.g ||
+		maskTexColor.b > _MaskColor.b)
+	{
+		_DotDataBuffer[index].Enable = true;
+	}
+	else
+	{
+		_DotDataBuffer[index].Enable = false;
+	}
+}
+
+[numthreads(ThreadBlockSize, 1, 1)]
+void Update(uint3 id : SV_DispatchThreadID)
+{
+	// Position計算
+	const unsigned int index = id.x;
+	int x = index % _Width;
+	int z = index / _Height;
+
+	float3 originPos = _DotDataBuffer[index].OriginPos;
+	_DotDataBuffer[index].Position = float3(originPos.x + _BasePos.x, originPos.y + _BasePos.y, originPos.z + _BasePos.z);
+
+	// Mask処理
+	float maskX = (float)_MaskWidth * ((float)x / (float)_Width);
+	float maskY = (float)_MaskHeight * ((float)z / (float)_Height);
+	float4 maskTexColor = _MaskTexture[uint2(maskX, maskY)];
+	if (maskTexColor.r > _MaskColor.r ||
+		maskTexColor.g > _MaskColor.g ||
+		maskTexColor.b > _MaskColor.b)
+	{
+		_DotDataBuffer[index].Enable = true;
+	}
+	else
+	{
+		_DotDataBuffer[index].Enable = false;
+	}
+}

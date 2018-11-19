@@ -69,14 +69,13 @@ namespace Docomo.Map5g
         public void InitMap(int width, int height, float wGapSize, float hGapSize)
         {
             _dotArr = new DotView[width, height];
-            //_dotArr = new GameObject[width, height];
-            var dotPos = new Vector2(0.0f, 0.0f);
             var propertyBlock = new MaterialPropertyBlock();
 
             for (int w = 0; w < width; w++)
             {
                 for (int h = 0; h < height; h++)
                 {
+
                     var dot = Instantiate(_dotPrefab);
                     dot.transform.SetParent(_dotParent.transform);
                     dot.transform.SetLocalPositionX(wGapSize * w);
@@ -137,10 +136,10 @@ namespace Docomo.Map5g
         }
 
         #region 波紋アニメーション
-        public void Ripple(Vector2 startOffset, int rippleRange)
+        public void Ripple(Vector2 startOffset, int range, float intensity, float duration)
         {
             //var rippleDots = GetElementsInRange(startOffset, _dotArr, rippleRange);
-            var rippleDots = GetDotsInRange(startOffset, rippleRange, (int)startOffset.x, (int)startOffset.y, rippleRange);
+            var rippleDots = GetDotsInRange(startOffset, range, (int)startOffset.x, (int)startOffset.y, range);
 
             float maxDistance = 0.0f;
             foreach (var dot in rippleDots)
@@ -158,11 +157,11 @@ namespace Docomo.Map5g
         }
         #endregion // 波紋アニメーション
 
-
         // TODO:C : コンピュートシェーダーで実装
         #region 待機中波アニメーション
-        public void StartIdleWave()
+        public void StartIdleWave(float intensity = 0.5f)
         {
+            SetIdleWaveIntensity(intensity);
             if (IsIdleWaving()) return;
             _idleWaveStream = Observable.EveryUpdate().Subscribe(_ =>
             {
@@ -186,6 +185,11 @@ namespace Docomo.Map5g
         {
             return _idleWaveStream != null;
         }
+
+        public void SetIdleWaveIntensity(float intensity)
+        {
+            _dotSharedMaterial.SetFloat("_Amount", Mathf.Clamp(intensity, 0.0f, 5.0f));
+        }
         #endregion
 
 
@@ -204,7 +208,7 @@ namespace Docomo.Map5g
          * "+" : 範囲外の要素
          */
         // TODO:M : 試行回数減らす
-        // TODO:S : メソッドもっと短くまとめたい
+        // TODO:C : メソッドもっと短くまとめたい
         // TODO:C : offsetを扱う部分でVector2とかint二つ作ったりバラバラなので統一したい
         private List<DotView> GetDotsInRange(Vector2 offset, int range, int originOffsetX = 0, int originOffsetY = 0, int originRange = 0)
         {
@@ -212,10 +216,6 @@ namespace Docomo.Map5g
 
             if (range <= 1)
             {
-                // TODO:M : それぞれのピクセルが範囲内か判定
-                var xLength = _dotArr.GetLength(0);
-                var yLength = _dotArr.GetLength(1);
-
                 // center
                 if (IsInRange(new Vector2(offset.x, offset.y) , new Vector2(originOffsetX, originOffsetY), originRange))
                     list.Add(_dotArr[(int)offset.x, (int)offset.y]);
@@ -250,8 +250,9 @@ namespace Docomo.Map5g
                 // 周囲1pxの正方形になるまでそれぞれの正方形に対して9分割を続けていく
                 // 範囲外のピクセルを省く処理
 
-                // 次に周囲何pxで探索するか決定
+                // 周囲何pxで探索するか決定
                 // TODO:S : ここもっと行数すくなくかけそう
+                // TODO:S : 変数名もっと分かりやすいものにしたい
                 int i = 0;
                 int nextSearchRange = 0;
                 int biggerRange = 0;

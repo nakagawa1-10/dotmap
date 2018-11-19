@@ -102,7 +102,7 @@ namespace Sandbox.DotMap
             }
 
             // ノイズテクスチャ
-            UpdateBuffer();
+            //UpdateBuffer();
         }
 
         private void OnDestroy()
@@ -296,7 +296,9 @@ namespace Sandbox.DotMap
                     if (maskColor.r > _maskThreshold.r ||
                         maskColor.g > _maskThreshold.g ||
                         maskColor.b > _maskThreshold.b)
-                        _dots[v, h].gameObject.SetActive(false);
+                    {
+                        //_dots[v, h].gameObject.SetActive(false);
+                    }
 
                     hPos += _hInterval;
 

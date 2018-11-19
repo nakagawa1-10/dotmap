@@ -42,7 +42,7 @@ namespace Docomo.Map5g
         private void Start()
         {
             _view.InitMap(_mapSetting.Width, _mapSetting.Height, _mapSetting.WidthGapSize, _mapSetting.HeightGapSize);
-            _view.StartIdleWave();
+            _view.StartIdleWave(_mapSetting.IdleWaveIntensity);
         }
 
         private void OnApplicationQuit()
@@ -87,8 +87,7 @@ namespace Docomo.Map5g
             if (_view.HasInitMap())
             {
                 var offset = new Vector2(dotOffset.x, dotOffset.y);
-                // TODO:M : ここの変数外部化
-                _view.Ripple(offset, 13);
+                _view.Ripple(offset, _mapSetting.RipplePxRange, _mapSetting.RippleIntensity, _mapSetting.RippleDuration);
             }
 
             dotId = string.Empty;
